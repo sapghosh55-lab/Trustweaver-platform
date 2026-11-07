@@ -11,12 +11,58 @@ const SAMPLE_TARGETS = [
   { label: "Weak TLS Demo", url: "https://expired.badssl.com" },
 ];
 
+interface ScanPreviewData {
+  target_url?: string;
+  report_id?: string;
+  digital_trust_score?: number;
+  trust_grade?: string;
+  overall_verdict?: string;
+  executive_summary?: string;
+  component_scores?: {
+    phishing_hygiene_score?: number;
+    ssl_tls_security_score?: number;
+    header_hardening_score?: number;
+  };
+}
+
+interface RecentAuditItem {
+  report_id: string;
+  target_url: string;
+  scanned_domain: string;
+  digital_trust_score: number;
+  trust_grade: string;
+  overall_verdict: string;
+  created_at: string;
+}
+
 export default function LandingPage() {
   const router = useRouter();
   const [inputUrl, setInputUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [scanResult, setScanResult] = useState<any>(null);
+  const [scanResult, setScanResult] = useState<ScanPreviewData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [recentAudits, setRecentAudits] = useState<RecentAuditItem[]>([]);
+
+  React.useEffect(() => {
+    let isCancelled = false;
+    const fetchRecentAudits = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/scans/recent?limit=8");
+        if (response.ok) {
+          const list: RecentAuditItem[] = await response.json();
+          if (!isCancelled) {
+            setRecentAudits(list);
+          }
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    };
+    fetchRecentAudits();
+    return () => {
+      isCancelled = true;
+    };
+  }, [scanResult]);
 
   const handleScan = async (targetUrlToScan?: string) => {
     const target = (targetUrlToScan || inputUrl).trim();
@@ -41,10 +87,10 @@ export default function LandingPage() {
         throw new Error(`Scan server returned status ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: ScanPreviewData = await response.json();
       setScanResult(data);
       setInputUrl(normalizedUrl);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Backend scan failed or offline:", err);
       setErrorMessage(
         "Could not connect to Hackmatrix backend at http://localhost:8000. Ensure the FastAPI service is running."
@@ -221,7 +267,7 @@ export default function LandingPage() {
                 </div>
 
                 <TrustScoreRing
-                  score={scanResult.digital_trust_score}
+                  score={scanResult.digital_trust_score ?? 0}
                   grade={scanResult.trust_grade}
                   verdict={scanResult.overall_verdict}
                   size={150}
@@ -344,6 +390,67 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Recent Audits Live Database Section */}
+        {recentAudits.length > 0 && (
+          <section className="mx-auto max-w-7xl px-6 pb-16">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-400">
+                  Historical Intelligence
+                </h2>
+                <p className="mt-1 text-2xl font-black text-white">
+                  Recently Audited Websites
+                </p>
+              </div>
+              <span className="text-xs text-slate-500 font-mono">SQLite Persistent Store</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {recentAudits.map((item) => (
+                <div
+                  key={item.report_id}
+                  onClick={() => router.push(`/dashboard?url=${encodeURIComponent(item.target_url)}`)}
+                  className="group cursor-pointer rounded-xl border border-slate-800/80 bg-slate-900/60 p-4 transition-all hover:border-cyan-500/40 hover:bg-slate-900"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-slate-400 truncate max-w-[150px]">
+                      {item.scanned_domain}
+                    </span>
+                    <span
+                      className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        item.trust_grade === "A"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : item.trust_grade === "B"
+                          ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                          : item.trust_grade === "C"
+                          ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                          : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                      }`}
+                    >
+                      Grade {item.trust_grade}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-baseline justify-between">
+                    <span className="text-2xl font-black text-white">
+                      {item.digital_trust_score}
+                      <span className="text-xs text-slate-500 font-normal">/100</span>
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {item.overall_verdict.replace(/_/g, " ")}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-800/60 pt-2">
+                    <span className="font-mono">{item.report_id}</span>
+                    <span className="group-hover:text-cyan-400 transition-colors">View Report →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}

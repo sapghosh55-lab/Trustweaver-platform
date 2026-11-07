@@ -1,0 +1,27 @@
+{
+  "name": "trustweaver-web3",
+  "version": "1.0.0",
+  "description": "On-chain threat intelligence registry for TrustWeaver / Hackmatrix platform",
+  "main": "hardhat.config.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia"
+  },
+  "keywords": [
+    "solidity",
+    "hardhat",
+    "threat-intelligence",
+    "security",
+    "web3"
+  ],
+  "author": "TrustWeaver Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0"
+  }
+}
+

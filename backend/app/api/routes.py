@@ -4,17 +4,19 @@ Exposes the POST /scan endpoint orchestrating:
 1. phishing_analyzer.py
 2. cert_validator.py
 3. vuln_scanner.py
-concurrently, then aggregates results through threat_intel.py via Groq LLM.
+concurrently, then aggregates results through threat_intel.py via Groq LLM,
+and persists historical audit logs in SQLite.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.db.history_db import HistoryDB
 from app.services.cert_validator import validate_certificate
 from app.services.phishing_analyzer import analyze_phishing
 from app.services.threat_intel import generate_digital_trust_report
@@ -23,6 +25,7 @@ from app.services.vuln_scanner import scan_vulnerabilities
 logger = logging.getLogger(__name__)
 
 routes = APIRouter()
+db = HistoryDB()
 
 
 class ScanRequest(BaseModel):
@@ -77,11 +80,32 @@ async def scan_endpoint(req: ScanRequest) -> Dict[str, Any]:
             vuln_res,
         )
 
+        # Persist report in database asynchronously
+        try:
+            db.save_scan(report)
+        except Exception as db_err:
+            logger.warning("Could not persist scan to database: %s", db_err)
+
         return report
 
     except Exception as exc:
         logger.exception("Failed executing /scan endpoint: %s", exc)
         raise HTTPException(status_code=500, detail=f"Scan orchestration failed: {str(exc)}")
+
+
+@routes.get("/scans/recent", summary="Retrieve Recent Audit Histories")
+async def get_recent_scans(limit: int = 15) -> List[Dict[str, Any]]:
+    """Fetch the latest website audits and their Digital Trust Scores."""
+    return db.get_recent_scans(limit=limit)
+
+
+@routes.get("/scans/{report_id}", summary="Retrieve Specific Forensic Report")
+async def get_scan_report(report_id: str) -> Dict[str, Any]:
+    """Retrieve full audit report by report ID."""
+    report = db.get_scan_by_id(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Scan report not found")
+    return report
 
 
 @routes.post("/scan/phishing", summary="Phishing and Brand Impersonation Scan")
@@ -100,4 +124,3 @@ async def scan_cert_only(req: ScanRequest) -> Dict[str, Any]:
 async def scan_vuln_only(req: ScanRequest) -> Dict[str, Any]:
     """Execute security header and service version disclosure scan alone."""
     return await asyncio.to_thread(scan_vulnerabilities, req.url.strip())
-

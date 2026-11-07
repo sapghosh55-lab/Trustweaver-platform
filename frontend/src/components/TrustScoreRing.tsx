@@ -32,7 +32,7 @@ export default function TrustScoreRing({
   let colorClass = "text-emerald-500 stroke-emerald-500";
   let bgGlow = "shadow-emerald-500/20";
   let gradeBadgeColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
-  let computedGrade = grade || (normalizedScore >= 90 ? "A" : normalizedScore >= 75 ? "B" : normalizedScore >= 60 ? "C" : normalizedScore >= 40 ? "D" : "F");
+  const computedGrade = grade || (normalizedScore >= 90 ? "A" : normalizedScore >= 75 ? "B" : normalizedScore >= 60 ? "C" : normalizedScore >= 40 ? "D" : "F");
 
   if (normalizedScore >= 90) {
     colorClass = "text-emerald-400 stroke-emerald-400";

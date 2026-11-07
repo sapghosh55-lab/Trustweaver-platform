@@ -3,11 +3,113 @@
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import CertDetails from "@/components/CertDetails";
+import CertDetails, { CertValidationData } from "@/components/CertDetails";
 import TrustScoreRing from "@/components/TrustScoreRing";
 
+interface MitreTacticItem {
+  tactic?: string;
+  technique_id?: string;
+  name?: string;
+}
+
+interface BrandTargetItem {
+  brand?: string;
+  is_authorized_domain?: boolean;
+  current_domain?: string;
+  matched_keywords?: string[];
+}
+
+interface FormItem {
+  index?: number;
+  action?: string;
+  method?: string;
+  has_password?: boolean;
+  has_user_or_email?: boolean;
+  is_external_action?: boolean;
+  inputs_count?: number;
+  inputs?: Array<{ name?: string; type?: string }>;
+}
+
+interface MissingHeaderItem {
+  header?: string;
+  alias?: string;
+  severity?: string;
+  description?: string;
+  recommended?: string;
+}
+
+interface ExposedTechItem {
+  source?: string;
+  raw_value?: string;
+  exact_version_disclosed?: boolean;
+  disclosed_versions?: string[];
+  risk?: string;
+}
+
+interface ForensicReport {
+  report_id?: string;
+  target_url?: string;
+  digital_trust_score?: number;
+  trust_grade?: string;
+  overall_verdict?: string;
+  component_scores?: {
+    phishing_hygiene_score?: number;
+    ssl_tls_security_score?: number;
+    header_hardening_score?: number;
+  };
+  executive_summary?: string;
+  critical_red_flags?: string[];
+  mitre_attack_tactics?: MitreTacticItem[];
+  recommendations?: string[];
+  routing_intelligence?: {
+    tier_selected?: string;
+    complexity_score?: number;
+    matched_prototype?: string;
+    ai_success?: boolean;
+  };
+  raw_telemetry?: {
+    phishing_analysis?: {
+      url?: string;
+      scanned_domain?: string;
+      page_title?: string;
+      verdict?: string;
+      phishing_risk_score?: number;
+      credential_harvesting?: {
+        detected?: boolean;
+        has_external_submission?: boolean;
+        has_exfil_webhook?: boolean;
+        forms_count?: number;
+        forms?: FormItem[];
+      };
+      brand_impersonation?: {
+        detected?: boolean;
+        brands?: BrandTargetItem[];
+      };
+      red_flags?: string[];
+    };
+    certificate_validation?: CertValidationData;
+    vulnerability_scan?: {
+      target?: string;
+      scanned_domain?: string;
+      http_status_code?: number;
+      success?: boolean;
+      verdict?: string;
+      vulnerability_risk_score?: number;
+      missing_headers?: MissingHeaderItem[];
+      present_headers?: Array<{
+        header?: string;
+        alias?: string;
+        value?: string;
+        is_weak?: boolean;
+      }>;
+      exposed_technologies?: ExposedTechItem[];
+      has_version_disclosure?: boolean;
+    };
+  };
+}
+
 // Fallback mock report for demonstration if backend is not yet started
-const MOCK_DEMO_REPORT = {
+const MOCK_DEMO_REPORT: ForensicReport = {
   report_id: "DTS-demo7f2b",
   target_url: "https://login-microsoft-auth.secure-portal.xyz/login",
   digital_trust_score: 24,
@@ -183,13 +285,15 @@ const MOCK_DEMO_REPORT = {
   },
 };
 
+type TabType = "overview" | "phishing" | "cert" | "vuln" | "ai" | "raw";
+
 function DashboardContent() {
   const searchParams = useSearchParams();
   const urlParam = searchParams.get("url");
 
-  const [activeTab, setActiveTab] = useState<"overview" | "phishing" | "cert" | "vuln" | "ai" | "raw">("overview");
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [targetUrl, setTargetUrl] = useState(urlParam || "https://login-microsoft-auth.secure-portal.xyz/login");
-  const [report, setReport] = useState<any>(MOCK_DEMO_REPORT);
+  const [report, setReport] = useState<ForensicReport>(MOCK_DEMO_REPORT);
   const [isLoading, setIsLoading] = useState(false);
   const [isDemoData, setIsDemoData] = useState(true);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
@@ -208,10 +312,10 @@ function DashboardContent() {
         throw new Error(`HTTP ${response.status}: Scan service failed`);
       }
 
-      const data = await response.json();
+      const data: ForensicReport = await response.json();
       setReport(data);
       setIsDemoData(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Backend unavailable, falling back to mock demonstration data:", err);
       setErrorNotice(
         "Backend scan server at http://localhost:8000 could not be reached. Displaying illustrative demo threat telemetry."
@@ -224,10 +328,44 @@ function DashboardContent() {
   };
 
   useEffect(() => {
-    if (urlParam) {
-      setTargetUrl(urlParam);
-      fetchScanReport(urlParam);
-    }
+    if (!urlParam) return;
+    let isCancelled = false;
+
+    // Asynchronously fetch without synchronous setState in effect body
+    const executeInitialScan = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: urlParam }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Scan service failed`);
+        }
+
+        const data: ForensicReport = await response.json();
+        if (!isCancelled) {
+          setReport(data);
+          setIsDemoData(false);
+        }
+      } catch (err: unknown) {
+        console.warn("Backend unavailable, falling back to mock demonstration data:", err);
+        if (!isCancelled) {
+          setErrorNotice(
+            "Backend scan server at http://localhost:8000 could not be reached. Displaying illustrative demo threat telemetry."
+          );
+          setReport(MOCK_DEMO_REPORT);
+          setIsDemoData(true);
+        }
+      }
+    };
+
+    executeInitialScan();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [urlParam]);
 
   const handleRescan = (e: React.FormEvent) => {
@@ -417,17 +555,19 @@ function DashboardContent() {
 
         {/* Navigation Tabs */}
         <div className="mt-8 flex flex-wrap gap-2 border-b border-slate-800 pb-2">
-          {[
-            { id: "overview", label: "Overview & MITRE" },
-            { id: "phishing", label: "Phishing & Brand Impersonation" },
-            { id: "cert", label: "SSL/TLS & CA Chain" },
-            { id: "vuln", label: "Headers & Vulnerabilities" },
-            { id: "ai", label: "AI Routing & Intelligence" },
-            { id: "raw", label: "Raw JSON Telemetry" },
-          ].map((tab) => (
+          {(
+            [
+              { id: "overview", label: "Overview & MITRE" },
+              { id: "phishing", label: "Phishing & Brand Impersonation" },
+              { id: "cert", label: "SSL/TLS & CA Chain" },
+              { id: "vuln", label: "Headers & Vulnerabilities" },
+              { id: "ai", label: "AI Routing & Intelligence" },
+              { id: "raw", label: "Raw JSON Telemetry" },
+            ] as const
+          ).map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
                 activeTab === tab.id
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
@@ -452,7 +592,7 @@ function DashboardContent() {
               </p>
 
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {report?.mitre_attack_tactics?.map((mitre: any, idx: number) => (
+                {report?.mitre_attack_tactics?.map((mitre: MitreTacticItem, idx: number) => (
                   <div
                     key={idx}
                     className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5 space-y-1"
@@ -516,9 +656,9 @@ function DashboardContent() {
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Brand Impersonation Status
                 </span>
-                {phishing?.brand_impersonation?.detected ? (
+                {phishing?.brand_impersonation?.detected && phishing.brand_impersonation.brands ? (
                   <div className="mt-3 space-y-2">
-                    {phishing.brand_impersonation.brands.map((b: any, i: number) => (
+                    {phishing.brand_impersonation.brands.map((b: BrandTargetItem, i: number) => (
                       <div
                         key={i}
                         className="rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-200"
@@ -545,9 +685,9 @@ function DashboardContent() {
                   Credential Harvesting Forms ({phishing?.credential_harvesting?.forms_count ?? 0})
                 </h4>
 
-                {phishing?.credential_harvesting?.forms?.length > 0 ? (
+                {phishing?.credential_harvesting?.forms && phishing.credential_harvesting.forms.length > 0 ? (
                   <div className="mt-3 space-y-3">
-                    {phishing.credential_harvesting.forms.map((form: any, idx: number) => (
+                    {phishing.credential_harvesting.forms.map((form: FormItem, idx: number) => (
                       <div
                         key={idx}
                         className="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs"
@@ -608,7 +748,7 @@ function DashboardContent() {
                   Missing or Incomplete Headers ({vuln?.missing_headers?.length ?? 0})
                 </h4>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {vuln?.missing_headers?.map((h: any, idx: number) => (
+                  {vuln?.missing_headers?.map((h: MissingHeaderItem, idx: number) => (
                     <div
                       key={idx}
                       className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5 space-y-1.5"
@@ -635,13 +775,13 @@ function DashboardContent() {
               </div>
 
               {/* Exposed Technologies */}
-              {vuln?.exposed_technologies?.length > 0 && (
+              {vuln?.exposed_technologies && vuln.exposed_technologies.length > 0 && (
                 <div className="mt-6">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
                     Exposed Service &amp; Technology Disclosures
                   </h4>
                   <div className="mt-3 space-y-2">
-                    {vuln.exposed_technologies.map((tech: any, idx: number) => (
+                    {vuln.exposed_technologies.map((tech: ExposedTechItem, idx: number) => (
                       <div
                         key={idx}
                         className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs"
@@ -694,7 +834,7 @@ function DashboardContent() {
                 <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-xs">
                   <span className="text-slate-400">Matched Complexity Prototype:</span>
                   <p className="mt-1 font-mono text-cyan-300">
-                    "{report.routing_intelligence.matched_prototype}"
+                    &ldquo;{report.routing_intelligence.matched_prototype}&rdquo;
                   </p>
                 </div>
               )}
@@ -736,4 +876,3 @@ export default function DashboardPage() {
     </Suspense>
   );
 }
-
