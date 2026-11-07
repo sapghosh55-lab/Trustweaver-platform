@@ -14,7 +14,7 @@ async function main() {
   console.log(`Chain ID               : ${network.chainId}`);
 
   const balance = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`Deployer Balance       : ${hre.ethers.formatEther(balance)} native currency`);
+  console.log(`Deployer Balance       : ${hre.ethers.formatEther(balance)} ETH`);
   console.log("--------------------------------------------------");
 
   // Deploy ThreatRegistry contract
@@ -25,41 +25,54 @@ async function main() {
   await registry.waitForDeployment();
   const contractAddress = await registry.getAddress();
 
-  console.log(` ThreatRegistry successfully deployed!`);
+  console.log(" ThreatRegistry successfully deployed!");
   console.log(`Contract Address       : ${contractAddress}`);
 
-  // Display explorer link based on chain ID
-  if (network.chainId === 80002n) {
-    console.log(`Polygon Amoy Explorer  : https://amoy.polygonscan.com/address/${contractAddress}`);
-  } else if (network.chainId === 11155111n) {
-    console.log(`Sepolia Etherscan      : https://sepolia.etherscan.io/address/${contractAddress}`);
+  // Fetch the compiled ABI from Hardhat artifacts
+  const artifact = await hre.artifacts.readArtifact("ThreatRegistry");
+  const abi = artifact.abi;
+
+  // 1. Write Contract Address and compiled ABI to backend/app/core/contract_abi.json
+  const backendCoreDir = path.join(__dirname, "..", "..", "backend", "app", "core");
+  if (!fs.existsSync(backendCoreDir)) {
+    fs.mkdirSync(backendCoreDir, { recursive: true });
   }
 
-  // Persist deployed deployment metadata for backend integration
+  const contractAbiData = {
+    contractName: "ThreatRegistry",
+    contractAddress: contractAddress,
+    network: network.name || "localhost",
+    chainId: network.chainId.toString(),
+    deployedAt: new Date().toISOString(),
+    deployer: deployer.address,
+    abi: abi,
+  };
+
+  const targetAbiPath = path.join(backendCoreDir, "contract_abi.json");
+  fs.writeFileSync(targetAbiPath, JSON.stringify(contractAbiData, null, 2), "utf-8");
+  console.log(` Contract ABI & Address saved to: ${targetAbiPath}`);
+
+  // Also ensure backend/app/core/__init__.py exists
+  const initPyPath = path.join(backendCoreDir, "__init__.py");
+  if (!fs.existsSync(initPyPath)) {
+    fs.writeFileSync(initPyPath, "# core package\n", "utf-8");
+  }
+
+  // 2. Persist deployment metadata under web3/deployments
   const deploymentsDir = path.join(__dirname, "..", "deployments");
   if (!fs.existsSync(deploymentsDir)) {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
 
-  const deploymentData = {
-    network: network.name,
-    chainId: network.chainId.toString(),
-    contractAddress: contractAddress,
-    deployer: deployer.address,
-    deployedAt: new Date().toISOString(),
-  };
-
   fs.writeFileSync(
-    path.join(deploymentsDir, `${network.name || "network"}-${network.chainId}.json`),
-    JSON.stringify(deploymentData, null, 2)
+    path.join(deploymentsDir, `${network.name || "localhost"}-${network.chainId}.json`),
+    JSON.stringify(contractAbiData, null, 2),
+    "utf-8"
   );
 
   console.log("--------------------------------------------------");
-  console.log("NEXT STEPS:");
-  console.log("1. Add to backend/.env:");
-  console.log(`   THREAT_REGISTRY_CONTRACT_ADDRESS=${contractAddress}`);
-  console.log("2. Authorize your FastAPI backend oracle address:");
-  console.log("   await registry.setOracle('<FASTAPI_ORACLE_WALLET_ADDRESS>', true)");
+  console.log("DEPLOYMENT COMPLETE");
+  console.log(`FastAPI backend configuration updated via contract_abi.json`);
   console.log("==================================================");
 }
 
@@ -69,4 +82,3 @@ main()
     console.error("Deployment failed:", error);
     process.exit(1);
   });
-

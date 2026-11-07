@@ -83,8 +83,23 @@ def publish_threat_on_chain(
     Returns:
         Dictionary containing transaction hash (TxHash) and on-chain verification metadata.
     """
-    rpc = rpc_url or os.getenv("WEB3_RPC_URL", "https://rpc-amoy.polygon.technology/")
+    rpc = rpc_url or os.getenv("WEB3_RPC_URL", "http://127.0.0.1:8545")
     contract_addr = contract_address or os.getenv("THREAT_REGISTRY_CONTRACT_ADDRESS")
+    
+    # Auto-detect contract address and ABI from core/contract_abi.json if not explicitly configured in env
+    core_abi_file = os.path.join(os.path.dirname(__file__), "..", "core", "contract_abi.json")
+    loaded_abi = THREAT_REGISTRY_ABI
+    if os.path.exists(core_abi_file):
+        try:
+            with open(core_abi_file, "r", encoding="utf-8") as f:
+                core_data = json.load(f)
+                if not contract_addr and core_data.get("contractAddress"):
+                    contract_addr = core_data["contractAddress"]
+                if core_data.get("abi"):
+                    loaded_abi = core_data["abi"]
+        except Exception as read_err:
+            logger.warning("Could not load core/contract_abi.json: %s", read_err)
+
     key = private_key or os.getenv("WEB3_PRIVATE_KEY") or os.getenv("ORACLE_PRIVATE_KEY")
 
     # If key or address is not configured or in local test environment,
@@ -115,7 +130,7 @@ def publish_threat_on_chain(
         checksum_contract = w3.to_checksum_address(contract_addr)
         account = w3.eth.account.from_key(key)
 
-        contract = w3.eth.contract(address=checksum_contract, abi=THREAT_REGISTRY_ABI)
+        contract = w3.eth.contract(address=checksum_contract, abi=loaded_abi)
 
         # Build logThreat transaction
         nonce = w3.eth.get_transaction_count(account.address)
