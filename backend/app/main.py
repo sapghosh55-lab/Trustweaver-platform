@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
+from app.api.routes import routes
 
 app = FastAPI(
-    title="TrustWeaver Platform API",
-    description="Backend API for TrustWeaver platform",
+    title="Hackmatrix / TrustWeaver Platform API",
+    description="Backend API for Hackmatrix / TrustWeaver Security & Digital Trust Platform",
     version="0.1.0",
 )
 
-# Enable CORS for frontend and extensions
+# Enable CORS for frontend and browser extensions
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,10 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Expose /scan both at root /scan and under /api/scan
+app.include_router(routes)
+app.include_router(routes, prefix="/api")
 app.include_router(api_router, prefix="/api")
 
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "ok", "service": "trustweaver-backend"}
-
+    return {"status": "ok", "service": "hackmatrix-backend"}

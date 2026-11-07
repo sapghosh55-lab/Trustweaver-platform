@@ -5,12 +5,14 @@ from pydantic import BaseModel, Field
 from app.ai.cloud_llama import CloudLlamaClient
 from app.ai.local_gemma import LocalGemmaClient
 from app.ai.semantic_router import SemanticRouter
+from app.services.threat_engine import ThreatEngine
 
 api_router = APIRouter()
 
 router_instance = SemanticRouter()
 local_gemma = LocalGemmaClient()
 cloud_llama = CloudLlamaClient()
+threat_engine = ThreatEngine(semantic_router=router_instance)
 
 
 class RouteRequest(BaseModel):
@@ -37,6 +39,11 @@ class JSAnalyzeRequest(BaseModel):
 class ThreatReportRequest(BaseModel):
     signals: Dict[str, Any] = Field(..., description="Telemetry, observables, or heuristic flags")
     context: Optional[str] = Field(None, description="Investigation scope or target environment")
+
+
+class ComprehensiveScanRequest(BaseModel):
+    url: str = Field(..., description="Target URL for comprehensive scan")
+    deep_scan_dom: bool = Field(True, description="Whether to extract and inspect inline scripts and forms")
 
 
 @api_router.get("/status")
@@ -105,4 +112,14 @@ async def analyze_javascript(req: JSAnalyzeRequest):
 async def generate_threat_report(req: ThreatReportRequest):
     """Direct threat intelligence report synthesis using Cloud Llama 3.3 70B."""
     result = cloud_llama.synthesize_threat_report(raw_signals=req.signals, context=req.context)
+    return result
+
+
+@api_router.post("/scan-url")
+async def scan_url_comprehensive(req: ComprehensiveScanRequest):
+    """End-to-end URL and DOM analysis coordinated by the ThreatEngine."""
+    result = threat_engine.evaluate_url_comprehensive(
+        url=req.url,
+        deep_scan_dom=req.deep_scan_dom,
+    )
     return result
