@@ -1,47 +1,81 @@
-# TrustWeaver Platform
+# TrustWeaver / Hackmatrix Platform
 
-A unified multi-component platform comprising a modern Next.js frontend, a FastAPI backend with AI capabilities, and a browser extension.
+A cyber threat intelligence, web trust validation, and security auditing platform featuring:
+- **Dual-Tier AI Routing**: Sentence Transformers dynamically route tasks between local Ollama Gemma 2 (fast privacy-preserving heuristics) and Groq Llama 3.3 70B (deep forensic reasoning).
+- **Core Security Modules**: Real-time DOM phishing & brand impersonation analysis, SSL/TLS certificate chain auditing (detecting compromised CAs including the eMudhra TLS incident), and HTTP security headers/version exposure scanning.
+- **Concurrent API**: Fast, parallel execution via FastAPI `/scan` generating unified Digital Trust Score reports (0-100).
+- **Modern Next.js Frontend**: Accessible landing page with real-time audit search bar, visual `TrustScoreRing`, detailed `CertDetails` chain inspection, and full forensic report dashboard.
+- **Manifest V3 Browser Extension**: Pre-emptively warns users and aggressively injects full-screen red blocking overlays when critical threats are encountered.
 
-## Project Structure
+---
+
+## Architecture
 
 ```text
 trustweaver-platform/
-├── frontend/             # Next.js (TypeScript + Tailwind CSS)
+├── backend/                       # FastAPI Service & AI Engines
+│   ├── app/
+│   │   ├── ai/
+│   │   │   ├── local_gemma.py     # Local Ollama Gemma 2 heuristics (URL classification)
+│   │   │   ├── cloud_llama.py     # Groq API Llama 3.3 70B deep reasoning (JS deobfuscation & threat synthesis)
+│   │   │   └── semantic_router.py # Sentence Transformers cosine similarity router
+│   │   ├── services/
+│   │   │   ├── phishing_analyzer.py # Credential harvesting & brand spoofing
+│   │   │   ├── cert_validator.py    # SSL/TLS validation & eMudhra CA audit
+│   │   │   ├── vuln_scanner.py      # Security headers (HSTS, CSP) & version leaks
+│   │   │   └── threat_intel.py      # Aggregator & Digital Trust Score synthesis
+│   │   ├── api/
+│   │   │   ├── routes.py          # Concurrent POST /scan orchestrator
+│   │   │   └── router.py          # Detailed REST endpoints
+│   │   └── main.py                # FastAPI entrypoint
+│   ├── requirements.txt
+│   └── .env.example
+│
+├── frontend/                      # Next.js 16 + TypeScript + Tailwind CSS
 │   ├── src/
+│   │   ├── components/
+│   │   │   ├── TrustScoreRing.tsx # Dynamic SVG circular trust score gauge
+│   │   │   └── CertDetails.tsx    # Certificate chain & compromised CA audit UI
 │   │   └── app/
-│   ├── public/
+│   │       ├── page.tsx           # Accessible landing page with prominent search
+│   │       └── dashboard/page.tsx # Detailed forensic intelligence report
 │   ├── package.json
-│   ├── tsconfig.json
-│   └── ...
-├── backend/              # FastAPI Application & AI Services
-│   ├── venv/             # Python Virtual Environment
-│   ├── requirements.txt  # Python Dependencies
-│   └── app/
-│       ├── api/          # Route handlers & endpoints
-│       ├── services/     # Core business logic & integrations
-│       ├── ai/           # AI pipelines & embedding models
-│       └── main.py       # FastAPI entrypoint
-└── extension/            # Browser Extension
-    └── README.md
+│   └── tsconfig.json
+│
+└── extension/                     # Manifest V3 Chrome/Edge Extension
+    ├── manifest.json              # activeTab, scripting, <all_urls>
+    ├── background.js              # Tab monitor, /scan fetcher, & badge controller
+    ├── content.js                 # Aggressive full-screen red warning overlay
+    ├── popup.html                 # Mini Trust Score HUD
+    ├── popup.css
+    └── popup.js
 ```
 
-## Getting Started
+---
 
-### 1. Frontend
-```bash
-cd frontend
-npm run dev
-```
+## Quick Start
 
-### 2. Backend
-Activate the virtual environment and install dependencies:
+### 1. Backend Service
 ```bash
 cd backend
-# Windows:
-.\venv\Scripts\activate
-# Linux/macOS:
-# source venv/bin/activate
+# Activate virtual environment
+.\venv\Scripts\activate       # Windows
+# source venv/bin/activate    # Linux/macOS
 
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
+API docs available at: `http://localhost:8000/docs`
+
+### 2. Frontend Web App
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:3000` in your browser.
+
+### 3. Browser Extension
+1. Open `chrome://extensions/` or `edge://extensions/`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked** and select the `extension/` directory.

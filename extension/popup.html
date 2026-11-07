@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TrustWeaver Shield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <div class="brand-icon">🛡️</div>
+        <div>
+          <span class="brand-name">TrustWeaver</span>
+          <span class="brand-badge">SHIELD</span>
+        </div>
+      </div>
+      <div class="backend-status" id="backend-status" title="Connecting to Hackmatrix Backend">
+        <span class="status-dot"></span>
+        <span class="status-text">Ready</span>
+      </div>
+    </header>
+
+    <!-- Target URL Pill -->
+    <div class="target-card">
+      <span class="target-label">ACTIVE TAB TARGET</span>
+      <div class="target-url" id="target-domain">Loading active tab...</div>
+    </div>
+
+    <!-- Main Score Ring Section -->
+    <div class="score-section" id="score-section">
+      <div class="ring-wrapper">
+        <svg class="progress-ring" width="130" height="130" viewBox="0 0 130 130">
+          <circle class="ring-bg" cx="65" cy="65" r="52" stroke-width="10" />
+          <circle class="ring-progress" id="ring-progress" cx="65" cy="65" r="52" stroke-width="10" />
+        </svg>
+        <div class="ring-content">
+          <div class="score-number" id="score-val">--</div>
+          <div class="grade-badge" id="grade-badge">Grade -</div>
+        </div>
+      </div>
+      <div class="verdict-label" id="verdict-text">AUDITING SECURITY...</div>
+    </div>
+
+    <!-- Sub-metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-title">Phishing</span>
+        <span class="metric-score" id="phishing-val">--%</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">SSL / TLS</span>
+        <span class="metric-score" id="cert-val">--%</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-title">Headers</span>
+        <span class="metric-score" id="vuln-val">--%</span>
+      </div>
+    </div>
+
+    <!-- Red Flags List -->
+    <div class="flags-section" id="flags-section" style="display: none;">
+      <div class="flags-header">⚠️ Critical Security Flags</div>
+      <div class="flags-list" id="flags-list"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-buttons">
+      <button class="btn btn-primary" id="btn-dashboard">
+        Open Full Report
+      </button>
+      <button class="btn btn-secondary" id="btn-rescan">
+        ↻ Rescan
+      </button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
