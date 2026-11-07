@@ -73,6 +73,139 @@ VERSION_DISCLOSURE_HEADERS = [
 VERSION_PATTERN = re.compile(r"([a-zA-Z\-_]+)[\s/:]+(\d+(\.\d+)+[a-zA-Z0-9\-_]*)")
 
 
+def scan_headers(url: str, timeout: float = 5.0) -> Dict[str, Any]:
+    """Scan HTTP response headers using requests with a 5-second timeout.
+
+    Checks response headers for:
+    1. Strict-Transport-Security (HSTS)
+    2. Content-Security-Policy (CSP)
+    3. X-Frame-Options (XFO)
+
+    Flags any missing security headers or exposed Server version tags (e.g., 'Apache/2.4.1').
+    Returns a dictionary with findings and a vulnerability_score (higher means more missing headers).
+
+    Args:
+        url: Target web page URL.
+        timeout: Network timeout in seconds (defaults to 5.0s per specification).
+
+    Returns:
+        Structured dictionary containing findings, missing headers, exposed server version tags,
+        and the computed vulnerability_score.
+    """
+    if not url.startswith(("http://", "https://")):
+        url = f"https://{url}"
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname or url
+
+    findings: List[str] = []
+    missing_headers: List[str] = []
+    present_headers: Dict[str, str] = {}
+    exposed_server_tags: List[str] = []
+
+    try:
+        resp = requests.get(
+            url,
+            timeout=timeout,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36 HackmatrixScanner/1.0"
+                )
+            },
+            allow_redirects=True,
+            verify=False,  # Allow header auditing on non-trusted cert targets
+        )
+        headers = resp.headers
+        status_code = resp.status_code
+    except Exception as exc:
+        logger.warning("Header scan failed for %s: %s", url, exc)
+        return {
+            "url": url,
+            "target": url,
+            "scanned_domain": hostname,
+            "success": False,
+            "error": str(exc),
+            "vulnerability_score": 1.0,
+            "vulnerability_risk_score": 1.0,
+            "missing_headers": ["Strict-Transport-Security", "Content-Security-Policy", "X-Frame-Options"],
+            "findings": [f"Connection or timeout error (5s timeout): {exc}"],
+            "flags": [f"Target unreachable: {exc}"],
+            "verdict": "ERROR",
+        }
+
+    lower_headers = {k.lower(): v for k, v in headers.items()}
+
+    # Check the 3 core security headers
+    core_headers = {
+        "Strict-Transport-Security": "HSTS",
+        "Content-Security-Policy": "CSP",
+        "X-Frame-Options": "X-Frame-Options",
+    }
+
+    for h_name, h_alias in core_headers.items():
+        h_lower = h_name.lower()
+        if h_lower in lower_headers:
+            val = lower_headers[h_lower]
+            present_headers[h_name] = val
+        else:
+            missing_headers.append(h_name)
+            findings.append(f"Missing security header: {h_name} ({h_alias})")
+
+    # Flag exposed Server version tags (e.g. "Apache/2.4.1")
+    server_header = lower_headers.get("server")
+    if server_header:
+        matches = VERSION_PATTERN.findall(server_header)
+        if matches:
+            for match in matches:
+                tag = f"{match[0]}/{match[1]}"
+                exposed_server_tags.append(tag)
+                findings.append(f"Exposed Server version tag: '{tag}' in Server header ('{server_header}')")
+        else:
+            findings.append(f"Server header disclosure: '{server_header}'")
+
+    # Also inspect additional technology headers (X-Powered-By, etc.)
+    for v_hdr in ["x-powered-by", "x-aspnet-version", "x-generator"]:
+        if v_hdr in lower_headers:
+            val = lower_headers[v_hdr]
+            matches = VERSION_PATTERN.findall(val)
+            if matches:
+                for match in matches:
+                    tag = f"{match[0]}/{match[1]}"
+                    exposed_server_tags.append(tag)
+                    findings.append(f"Exposed technology version: '{tag}' in {v_hdr}")
+
+    # Compute vulnerability_score (higher means more missing headers and version leaks)
+    missing_ratio = len(missing_headers) / len(core_headers)
+    version_penalty = min(0.20, len(exposed_server_tags) * 0.10)
+    vulnerability_score = min(round((missing_ratio * 0.80) + version_penalty, 2), 1.0)
+
+    verdict = "HARDENED"
+    if vulnerability_score >= 0.70:
+        verdict = "POOR"
+    elif vulnerability_score >= 0.35:
+        verdict = "MODERATE"
+
+    return {
+        "url": url,
+        "target": url,
+        "scanned_domain": hostname,
+        "http_status_code": status_code,
+        "success": True,
+        "verdict": verdict,
+        "vulnerability_score": vulnerability_score,
+        "vulnerability_risk_score": vulnerability_score,
+        "missing_headers": missing_headers,
+        "present_headers": present_headers,
+        "missing_count": len(missing_headers),
+        "present_count": len(present_headers),
+        "exposed_server_tags": exposed_server_tags,
+        "findings": findings,
+        "flags": findings,
+    }
+
+
 def scan_vulnerabilities(url: str, timeout: float = 10.0) -> Dict[str, Any]:
     """Scan an HTTP response for missing security headers and exposed versions.
 

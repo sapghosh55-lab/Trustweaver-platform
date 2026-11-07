@@ -25,5 +25,12 @@ def test_emudhra_compromised_ca_detection():
 def test_validate_certificate_invalid_host():
     result = validate_certificate("invalid-non-existent-domain-12345.xyz", timeout=2.0)
     assert result["connection_success"] is False
+    assert result["is_secure"] is False
     assert result["risk_score"] >= 0.7
+
+
+def test_validate_certificate_sha1_flagged():
+    from app.services.cert_validator import WEAK_HASH_ALGORITHMS
+    assert "sha1" in WEAK_HASH_ALGORITHMS
+    assert "md5" in WEAK_HASH_ALGORITHMS
 

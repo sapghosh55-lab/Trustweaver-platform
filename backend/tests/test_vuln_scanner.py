@@ -22,3 +22,12 @@ def test_version_pattern_regex():
     assert len(php_matches) > 0
     assert php_matches[0][0] == "PHP"
 
+
+def test_scan_headers_invalid_host():
+    from app.services.vuln_scanner import scan_headers
+    result = scan_headers("http://invalid-nonexistent-domain-test12345.xyz", timeout=1.0)
+    assert result["success"] is False
+    assert result["vulnerability_score"] == 1.0
+    assert "Strict-Transport-Security" in result["missing_headers"]
+    assert len(result["findings"]) > 0
+

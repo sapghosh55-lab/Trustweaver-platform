@@ -111,6 +111,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
         return {
             "target": f"{host}:{port}",
             "connection_success": False,
+            "is_secure": False,
             "error": "Invalid target host",
             "cert_risk_score": 1.0,
             "risk_score": 1.0,
@@ -120,6 +121,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
     flags: List[str] = []
     ca_incident_alerts: List[Dict[str, Any]] = []
     crypto_weaknesses: List[str] = []
+    critical_vulnerabilities: List[str] = []
     risk_score = 0.0
 
     # 1. Establish TLS connection and fetch peer certificates
@@ -142,6 +144,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
         return {
             "target": f"{host}:{port}",
             "connection_success": False,
+            "is_secure": False,
             "error": f"TLS Handshake failed: {exc}",
             "cert_risk_score": 0.90,
             "risk_score": 0.90,
@@ -152,6 +155,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
         return {
             "target": f"{host}:{port}",
             "connection_success": False,
+            "is_secure": False,
             "error": "No certificate presented by peer",
             "cert_risk_score": 1.0,
             "risk_score": 1.0,
@@ -186,10 +190,17 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
         risk_score += 0.40
 
     # 3. Check for Weak Cryptographic Implementation
-    # Signature Hash Algorithm
+    # Signature Hash Algorithm (Flag any certificate using SHA-1 or MD5 as a critical vulnerability)
     sig_hash = cert.signature_hash_algorithm.name.lower() if cert.signature_hash_algorithm else "unknown"
-    if sig_hash in WEAK_HASH_ALGORITHMS:
-        msg = f"Weak and cryptographically broken signature hash: {sig_hash.upper()} (vulnerable to collision forgery)"
+    is_sha1_or_md5 = sig_hash in WEAK_HASH_ALGORITHMS or "sha1" in sig_hash or "md5" in sig_hash or sig_hash == "sha"
+    if is_sha1_or_md5:
+        msg = f"CRITICAL VULNERABILITY: Certificate uses broken signature hash algorithm '{sig_hash.upper()}' (vulnerable to collision forgery)"
+        crypto_weaknesses.append(msg)
+        flags.append(msg)
+        critical_vulnerabilities.append(msg)
+        risk_score += 0.85
+    elif sig_hash in WEAK_HASH_ALGORITHMS:
+        msg = f"Weak and cryptographically deprecated signature hash: {sig_hash.upper()}"
         crypto_weaknesses.append(msg)
         flags.append(msg)
         risk_score += 0.60
@@ -289,19 +300,51 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
 
     risk_score = min(round(risk_score, 2), 1.0)
     verdict = "TRUSTED"
-    if risk_score >= 0.70 or ca_incident_alerts:
+    if risk_score >= 0.70 or ca_incident_alerts or critical_vulnerabilities:
         verdict = "DANGEROUS"
     elif risk_score >= 0.35:
         verdict = "WEAK"
 
+    # Evaluate is_secure boolean flag
+    is_secure = (
+        not is_expired
+        and not is_not_yet_valid
+        and not critical_vulnerabilities
+        and not ca_incident_alerts
+        and risk_score < 0.35
+    )
+
+    cert_details = {
+        "subject": subject_str,
+        "issuer": issuer_str,
+        "signature_algorithm": sig_hash.upper(),
+        "expiration_date": not_after.isoformat(),
+        "not_before": not_before.isoformat(),
+        "days_to_expiry": days_to_expiry,
+        "is_expired": is_expired,
+        "serial_number": str(cert.serial_number),
+        "key_type": key_type,
+        "key_size_bits": key_size,
+        "sans": sans[:20],
+        "is_self_signed": is_self_signed,
+        "hostname_matched": hostname_matched,
+    }
+
     return {
+        "url": url_or_host,
+        "hostname": host,
+        "port": port,
         "target": f"{host}:{port}",
+        "is_secure": is_secure,
+        "cert_details": cert_details,
         "connection_success": True,
         "verdict": verdict,
         "cert_risk_score": risk_score,
         "risk_score": risk_score,
         "subject": subject_str,
         "issuer": issuer_str,
+        "signature_algorithm": sig_hash.upper(),
+        "expiration_date": not_after.isoformat(),
         "serial_number": str(cert.serial_number),
         "validity": {
             "not_before": not_before.isoformat(),
@@ -316,6 +359,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
             "negotiated_tls_version": negotiated_protocol,
             "negotiated_cipher": negotiated_cipher[0] if negotiated_cipher else None,
         },
+        "critical_vulnerabilities": critical_vulnerabilities,
         "weak_cryptography_flags": crypto_weaknesses,
         "compromised_ca_alerts": ca_incident_alerts,
         "subject_alternative_names": sans[:20],
