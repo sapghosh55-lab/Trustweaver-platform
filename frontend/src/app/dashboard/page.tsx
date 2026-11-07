@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import CertDetails, { CertValidationData } from "@/components/CertDetails";
 import TrustScoreRing from "@/components/TrustScoreRing";
+import VerifiableLedger from "@/components/VerifiableLedger";
 
 interface MitreTacticItem {
   tactic?: string;
@@ -52,6 +53,20 @@ interface ForensicReport {
   digital_trust_score?: number;
   trust_grade?: string;
   overall_verdict?: string;
+  blockchain_tx_hash?: string | null;
+  on_chain_record?: {
+    published?: boolean;
+    status?: string;
+    tx_hash?: string;
+    contract_address?: string;
+    explorer_url?: string;
+    ipfs_hash?: string;
+    threat_score?: number;
+    oracle_address?: string;
+    network?: string;
+    note?: string;
+  } | null;
+  ipfs_hash?: string;
   component_scores?: {
     phishing_hygiene_score?: number;
     ssl_tls_security_score?: number;
@@ -115,6 +130,19 @@ const MOCK_DEMO_REPORT: ForensicReport = {
   digital_trust_score: 24,
   trust_grade: "F",
   overall_verdict: "MALICIOUS",
+  blockchain_tx_hash: "0x3f9e8a71b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1",
+  on_chain_record: {
+    published: true,
+    status: "broadcast_confirmed",
+    tx_hash: "0x3f9e8a71b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1",
+    contract_address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    explorer_url: "https://amoy.polygonscan.com/tx/0x3f9e8a71b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1",
+    ipfs_hash: "QmZtmD2qt8fJpq3CLDHtaGqj9xDeTaGz9RESoWSD5WXyeN",
+    threat_score: 95,
+    oracle_address: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
+    network: "Polygon Amoy Testnet",
+  },
+  ipfs_hash: "QmZtmD2qt8fJpq3CLDHtaGqj9xDeTaGz9RESoWSD5WXyeN",
   component_scores: {
     phishing_hygiene_score: 5,
     ssl_tls_security_score: 30,
@@ -285,7 +313,7 @@ const MOCK_DEMO_REPORT: ForensicReport = {
   },
 };
 
-type TabType = "overview" | "phishing" | "cert" | "vuln" | "ai" | "raw";
+type TabType = "overview" | "phishing" | "cert" | "vuln" | "ai" | "ledger" | "raw";
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -553,11 +581,129 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* Transparent Threat Intelligence Ledger Verification Banner */}
+        {report?.blockchain_tx_hash && (
+          <div className="mt-8 rounded-2xl border border-cyan-500/40 bg-gradient-to-r from-slate-900 via-cyan-950/25 to-slate-900 p-6 shadow-2xl backdrop-blur-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-300">
+                    Transparent Threat Intelligence Ledger • On-Chain Attestation
+                  </span>
+                  <span className="rounded bg-cyan-500/20 border border-cyan-500/30 px-2 py-0.5 font-mono text-[10px] text-cyan-300">
+                    Verified Block
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-white sm:text-xl">
+                  Immutable Blockchain Threat Proof
+                </h3>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                  This domain was confirmed as a high-confidence threat and recorded on-chain in the{" "}
+                  <span className="font-mono text-cyan-400">ThreatRegistry.sol</span> contract. Users and security gateways can independently verify this cryptographic proof.
+                </p>
+              </div>
+
+              {/* Verification Links */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <a
+                  href={
+                    report.on_chain_record?.explorer_url ||
+                    `https://amoy.polygonscan.com/tx/${report.blockchain_tx_hash}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-950/50 hover:from-cyan-500 hover:to-blue-500 transition-all"
+                  title="Inspect transaction on Polygonscan"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <span>Verify on Polygonscan</span>
+                </a>
+
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${report.blockchain_tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition-all"
+                  title="Inspect transaction on Sepolia Etherscan"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <span>Etherscan</span>
+                </a>
+
+                {report.ipfs_hash && (
+                  <a
+                    href={`https://ipfs.io/ipfs/${report.ipfs_hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-950/40 px-3.5 py-2.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-950/60 transition-all"
+                    title={`View AI forensic report on IPFS: ${report.ipfs_hash}`}
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span>IPFS Telemetry</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* TxHash details row */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3 font-mono text-xs text-slate-400">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-slate-500">TxHash:</span>
+                <a
+                  href={
+                    report.on_chain_record?.explorer_url ||
+                    `https://amoy.polygonscan.com/tx/${report.blockchain_tx_hash}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 hover:underline truncate"
+                >
+                  {report.blockchain_tx_hash}
+                </a>
+              </div>
+              {report.on_chain_record?.contract_address && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">Contract:</span>
+                  <a
+                    href={`https://amoy.polygonscan.com/address/${report.on_chain_record.contract_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-300 hover:text-white hover:underline"
+                  >
+                    {report.on_chain_record.contract_address.slice(0, 8)}...{report.on_chain_record.contract_address.slice(-6)}
+                  </a>
+                </div>
+              )}
+              {report.ipfs_hash && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">IPFS CID:</span>
+                  <a
+                    href={`https://ipfs.io/ipfs/${report.ipfs_hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:underline"
+                  >
+                    {report.ipfs_hash.slice(0, 10)}...{report.ipfs_hash.slice(-6)}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="mt-8 flex flex-wrap gap-2 border-b border-slate-800 pb-2">
           {(
             [
               { id: "overview", label: "Overview & MITRE" },
+              { id: "ledger", label: "Transparent Threat Ledger" },
               { id: "phishing", label: "Phishing & Brand Impersonation" },
               { id: "cert", label: "SSL/TLS & CA Chain" },
               { id: "vuln", label: "Headers & Vulnerabilities" },
@@ -575,6 +721,11 @@ function DashboardContent() {
               }`}
             >
               {tab.label}
+              {tab.id === "ledger" && report?.blockchain_tx_hash && (
+                <span className="ml-1.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 px-1.5 py-0.2 text-[9px]">
+                  On-Chain
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -626,6 +777,26 @@ function DashboardContent() {
                 ))}
               </ul>
             </div>
+
+            {/* Transparent Threat Intelligence Ledger Feed */}
+            <div className="pt-2">
+              <VerifiableLedger
+                currentTxHash={report?.blockchain_tx_hash}
+                currentUrl={report?.target_url}
+                contractAddress={report?.on_chain_record?.contract_address}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* TAB: TRANSPARENT THREAT LEDGER */}
+        {activeTab === "ledger" && (
+          <div className="mt-6">
+            <VerifiableLedger
+              currentTxHash={report?.blockchain_tx_hash}
+              currentUrl={report?.target_url}
+              contractAddress={report?.on_chain_record?.contract_address}
+            />
           </div>
         )}
 
