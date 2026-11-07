@@ -114,6 +114,7 @@ def scan_vulnerabilities(url: str, timeout: float = 10.0) -> Dict[str, Any]:
             "success": False,
             "error": str(exc),
             "vulnerability_score": 0.8,
+            "vulnerability_risk_score": 0.8,
             "verdict": "ERROR",
         }
 
@@ -227,6 +228,7 @@ def scan_vulnerabilities(url: str, timeout: float = 10.0) -> Dict[str, Any]:
         "success": True,
         "verdict": verdict,
         "vulnerability_risk_score": raw_score,
+        "vulnerability_score": raw_score,
         "missing_headers": missing_headers,
         "present_headers": present_headers,
         "missing_count": len(missing_headers),

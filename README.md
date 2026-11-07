@@ -42,6 +42,17 @@ trustweaver-platform/
 │   ├── package.json
 │   └── tsconfig.json
 │
+├── web3/                          # Hardhat Smart Contracts (Polygon Amoy & Sepolia)
+│   ├── contracts/
+│   │   └── ThreatRegistry.sol     # On-chain threat reports & oracle access control
+│   ├── scripts/
+│   │   └── deploy.js              # Testnet deployment script
+│   ├── test/
+│   │   └── ThreatRegistry.test.js # Hardhat test suite (9 passing tests)
+│   ├── hardhat.config.js
+│   ├── package.json
+│   └── .env.example
+│
 └── extension/                     # Manifest V3 Chrome/Edge Extension
     ├── manifest.json              # activeTab, scripting, <all_urls>
     ├── background.js              # Tab monitor, /scan fetcher, & badge controller
@@ -75,7 +86,16 @@ npm run dev
 ```
 Open `http://localhost:3000` in your browser.
 
-### 3. Browser Extension
+### 3. Web3 Threat Registry (Polygon Amoy & Sepolia)
+```bash
+cd web3
+npm install
+npm test
+npm run deploy:amoy      # Deploy to Polygon Amoy Testnet
+npm run deploy:sepolia   # Deploy to Ethereum Sepolia Testnet
+```
+
+### 4. Browser Extension
 1. Open `chrome://extensions/` or `edge://extensions/`.
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select the `extension/` directory.

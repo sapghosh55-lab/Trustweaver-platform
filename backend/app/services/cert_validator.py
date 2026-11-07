@@ -108,7 +108,14 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
     """
     host, port = extract_host_port(url_or_host)
     if not host:
-        return {"error": "Invalid target host", "valid": False}
+        return {
+            "target": f"{host}:{port}",
+            "connection_success": False,
+            "error": "Invalid target host",
+            "cert_risk_score": 1.0,
+            "risk_score": 1.0,
+            "verdict": "FAILED",
+        }
 
     flags: List[str] = []
     ca_incident_alerts: List[Dict[str, Any]] = []
@@ -136,6 +143,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
             "target": f"{host}:{port}",
             "connection_success": False,
             "error": f"TLS Handshake failed: {exc}",
+            "cert_risk_score": 0.90,
             "risk_score": 0.90,
             "verdict": "FAILED",
         }
@@ -145,6 +153,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
             "target": f"{host}:{port}",
             "connection_success": False,
             "error": "No certificate presented by peer",
+            "cert_risk_score": 1.0,
             "risk_score": 1.0,
             "verdict": "CRITICAL",
         }
@@ -290,6 +299,7 @@ def validate_certificate(url_or_host: str, timeout: float = 10.0) -> Dict[str, A
         "connection_success": True,
         "verdict": verdict,
         "cert_risk_score": risk_score,
+        "risk_score": risk_score,
         "subject": subject_str,
         "issuer": issuer_str,
         "serial_number": str(cert.serial_number),
