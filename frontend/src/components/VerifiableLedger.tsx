@@ -31,12 +31,12 @@ interface VerifiableLedgerProps {
   rpcUrl?: string;
 }
 
-// Fallback verified threats for instant presentation and offline resiliency
+// Fallback verified threats with deterministic timestamps for SSR/Hydration consistency
 const FALLBACK_VERIFIED_THREATS: VerifiableThreatItem[] = [
   {
     url: "https://login-microsoft-auth.secure-portal.xyz/login",
     score: 95,
-    timestamp: Math.floor(Date.now() / 1000) - 180,
+    timestamp: 1731020000,
     ipfsHash: "QmZtmD2qt8fJpq3CLDHtaGqj9xDeTaGz9RESoWSD5WXyeN",
     reporter: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
     exists: true,
@@ -46,7 +46,7 @@ const FALLBACK_VERIFIED_THREATS: VerifiableThreatItem[] = [
   {
     url: "http://paypal-verification-center.com/signin",
     score: 92,
-    timestamp: Math.floor(Date.now() / 1000) - 3600,
+    timestamp: 1731016400,
     ipfsHash: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
     reporter: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
     exists: true,
@@ -56,7 +56,7 @@ const FALLBACK_VERIFIED_THREATS: VerifiableThreatItem[] = [
   {
     url: "https://appleid-security-lockout.net/verify",
     score: 88,
-    timestamp: Math.floor(Date.now() / 1000) - 7200,
+    timestamp: 1731012800,
     ipfsHash: "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
     reporter: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
     exists: true,
@@ -66,7 +66,7 @@ const FALLBACK_VERIFIED_THREATS: VerifiableThreatItem[] = [
   {
     url: "https://chase-bank-alert-update.top/auth",
     score: 98,
-    timestamp: Math.floor(Date.now() / 1000) - 14400,
+    timestamp: 1731005600,
     ipfsHash: "QmPZ9gcCEpqKTo6aq61g2nXGUhM49wbdukUicCYekA2Gmt",
     reporter: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
     exists: true,
@@ -76,7 +76,7 @@ const FALLBACK_VERIFIED_THREATS: VerifiableThreatItem[] = [
   {
     url: "https://google-drive-shared-doc-view.xyz/token",
     score: 84,
-    timestamp: Math.floor(Date.now() / 1000) - 28800,
+    timestamp: 1730991200,
     ipfsHash: "QmRpvJ3wXb9q2K5Yc8f4V6yU1tH7mN0kL3wXb9q2K5Yc8f",
     reporter: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
     exists: true,
@@ -97,6 +97,11 @@ export default function VerifiableLedger({
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "fallback" | "syncing">("syncing");
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const fetchLedgerFromContract = useCallback(async () => {
     setIsLoading(true);
@@ -204,11 +209,14 @@ export default function VerifiableLedger({
   );
 
   const formatTimestamp = (unixSec: number) => {
-    const diff = Math.floor(Date.now() / 1000) - unixSec;
+    if (!isMounted) {
+      return "Recently";
+    }
+    const diff = Math.max(0, Math.floor(Date.now() / 1000) - unixSec);
     if (diff < 60) return `${diff}s ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return new Date(unixSec * 1000).toLocaleDateString(undefined, {
+    return new Date(unixSec * 1000).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -427,7 +435,7 @@ export default function VerifiableLedger({
                     </td>
 
                     {/* Timestamp */}
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-400" suppressHydrationWarning>
                       {formatTimestamp(item.timestamp)}
                     </td>
 

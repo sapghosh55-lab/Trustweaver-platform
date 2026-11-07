@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const vulnValEl = document.getElementById("vuln-val");
   const flagsSectionEl = document.getElementById("flags-section");
   const flagsListEl = document.getElementById("flags-list");
+  const web3SectionEl = document.getElementById("web3-section");
+  const web3LinkEl = document.getElementById("web3-link");
   const btnDashboard = document.getElementById("btn-dashboard");
   const btnRescan = document.getElementById("btn-rescan");
 
@@ -111,6 +113,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     } else {
       flagsSectionEl.style.display = "none";
+    }
+
+    // Web3 On-Chain Attestation Badge
+    if (web3SectionEl) {
+      if (report.blockchain_tx_hash) {
+        web3SectionEl.style.display = "flex";
+        if (web3LinkEl) {
+          web3LinkEl.href = `https://amoy.polygonscan.com/tx/${report.blockchain_tx_hash}`;
+        }
+      } else {
+        web3SectionEl.style.display = "none";
+      }
     }
   }
 

@@ -107,6 +107,20 @@
             </ul>
           </div>
 
+          <!-- On-chain verification box if logged -->
+          ${
+            report.blockchain_tx_hash
+              ? `<div style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 10px; padding: 10px 14px; margin-bottom: 20px; text-align: left; font-family: monospace; font-size: 11px;">
+                  <span style="color: #67e8f9; font-weight: bold; text-transform: uppercase;">🔗 Immutably Logged On-Chain:</span>
+                  <div style="margin-top: 4px; word-break: break-all;">
+                    <a href="https://amoy.polygonscan.com/tx/${report.blockchain_tx_hash}" target="_blank" style="color: #38bdf8; text-decoration: underline;">
+                      TxHash: ${report.blockchain_tx_hash} ↗
+                    </a>
+                  </div>
+                </div>`
+              : ""
+          }
+
           <!-- Safety Call to Actions -->
           <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
             <button id="trustweaver-btn-safety" style="background: #ef4444; color: #ffffff; border: none; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); transition: transform 0.15s ease;">
