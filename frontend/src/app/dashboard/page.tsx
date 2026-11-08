@@ -315,6 +315,8 @@ const MOCK_DEMO_REPORT: ForensicReport = {
 
 type TabType = "overview" | "phishing" | "cert" | "vuln" | "ai" | "ledger" | "raw";
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 function DashboardContent() {
   const searchParams = useSearchParams();
   const urlParam = searchParams.get("url");
@@ -330,7 +332,7 @@ function DashboardContent() {
     setIsLoading(true);
     setErrorNotice(null);
     try {
-      const response = await fetch("http://localhost:8000/scan", {
+      const response = await fetch(`${apiUrl}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: urlToScan }),
@@ -346,7 +348,7 @@ function DashboardContent() {
     } catch (err: unknown) {
       console.warn("Backend unavailable, falling back to mock demonstration data:", err);
       setErrorNotice(
-        "Backend scan server at http://localhost:8000 could not be reached. Displaying illustrative demo threat telemetry."
+        `Backend scan server at ${apiUrl} could not be reached. Displaying illustrative demo threat telemetry.`
       );
       setReport(MOCK_DEMO_REPORT);
       setIsDemoData(true);
@@ -362,7 +364,7 @@ function DashboardContent() {
     // Asynchronously fetch without synchronous setState in effect body
     const executeInitialScan = async () => {
       try {
-        const response = await fetch("http://localhost:8000/scan", {
+        const response = await fetch(`${apiUrl}/scan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: urlParam }),
@@ -381,7 +383,7 @@ function DashboardContent() {
         console.warn("Backend unavailable, falling back to mock demonstration data:", err);
         if (!isCancelled) {
           setErrorNotice(
-            "Backend scan server at http://localhost:8000 could not be reached. Displaying illustrative demo threat telemetry."
+            `Backend scan server at ${apiUrl} could not be reached. Displaying illustrative demo threat telemetry.`
           );
           setReport(MOCK_DEMO_REPORT);
           setIsDemoData(true);

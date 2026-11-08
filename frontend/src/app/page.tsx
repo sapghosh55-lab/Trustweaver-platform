@@ -35,6 +35,8 @@ interface RecentAuditItem {
   created_at: string;
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function LandingPage() {
   const router = useRouter();
   const [inputUrl, setInputUrl] = useState("");
@@ -47,7 +49,7 @@ export default function LandingPage() {
     let isCancelled = false;
     const fetchRecentAudits = async () => {
       try {
-        const response = await fetch("http://localhost:8000/scans/recent?limit=8");
+        const response = await fetch(`${apiUrl}/scans/recent?limit=8`);
         if (response.ok) {
           const list: RecentAuditItem[] = await response.json();
           if (!isCancelled) {
@@ -77,7 +79,7 @@ export default function LandingPage() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch("http://localhost:8000/scan", {
+      const response = await fetch(`${apiUrl}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: normalizedUrl }),
@@ -93,7 +95,7 @@ export default function LandingPage() {
     } catch (err: unknown) {
       console.warn("Backend scan failed or offline:", err);
       setErrorMessage(
-        "Could not connect to Hackmatrix backend at http://localhost:8000. Ensure the FastAPI service is running."
+        `Could not connect to Hackmatrix backend at ${apiUrl}. Ensure the FastAPI service is running.`
       );
     } finally {
       setIsLoading(false);
