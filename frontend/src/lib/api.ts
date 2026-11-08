@@ -29,3 +29,4 @@ export async function getRecentScans(limit: number = 8) {
   }
   return response.json();
 }
+
