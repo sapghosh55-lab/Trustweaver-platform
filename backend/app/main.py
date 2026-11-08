@@ -1,3 +1,4 @@
+"""TrustWeaver Platform API entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
@@ -9,7 +10,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Enable CORS for frontend and browser extensions
+# Configure CORS middleware to allow frontend connections
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
