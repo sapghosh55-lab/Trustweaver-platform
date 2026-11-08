@@ -52,12 +52,21 @@ async def scan_endpoint(req: ScanRequest) -> Dict[str, Any]:
         cert_task = asyncio.to_thread(validate_certificate, target_url)
         vuln_task = asyncio.to_thread(scan_vulnerabilities, target_url)
 
-        phishing_res, cert_res, vuln_res = await asyncio.gather(
-            phishing_task,
-            cert_task,
-            vuln_task,
-            return_exceptions=True,
-        )
+        try:
+            phishing_res, cert_res, vuln_res = await asyncio.wait_for(
+                asyncio.gather(
+                    phishing_task,
+                    cert_task,
+                    vuln_task,
+                    return_exceptions=True,
+                ),
+                timeout=12.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Concurrent scan tasks timed out after 12s for %s", target_url)
+            phishing_res = {"error": "Scan timed out", "phishing_risk_score": 0.3, "verdict": "TIMEOUT"}
+            cert_res = {"error": "Cert scan timed out", "cert_risk_score": 0.3, "verdict": "TIMEOUT"}
+            vuln_res = {"error": "Vuln scan timed out", "vulnerability_risk_score": 0.3, "verdict": "TIMEOUT"}
 
         # Handle any uncaught exceptions in tasks safely
         if isinstance(phishing_res, Exception):

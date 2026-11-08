@@ -315,7 +315,8 @@ const MOCK_DEMO_REPORT: ForensicReport = {
 
 type TabType = "overview" | "phishing" | "cert" | "vuln" | "ai" | "ledger" | "raw";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const apiUrl = rawApiUrl.replace(/\/+$/, '');
 
 function DashboardContent() {
   const searchParams = useSearchParams();

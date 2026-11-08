@@ -27,7 +27,7 @@ class CloudLlamaClient:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        timeout: float = 60.0,
+        timeout: float = 12.0,
     ) -> None:
         """Initialize the Cloud Llama client.
 

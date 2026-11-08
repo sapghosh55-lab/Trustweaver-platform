@@ -35,7 +35,8 @@ interface RecentAuditItem {
   created_at: string;
 }
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const apiUrl = rawApiUrl.replace(/\/+$/, '');
 
 export default function LandingPage() {
   const router = useRouter();
@@ -94,8 +95,9 @@ export default function LandingPage() {
       setInputUrl(normalizedUrl);
     } catch (err: unknown) {
       console.warn("Backend scan failed or offline:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
       setErrorMessage(
-        `Could not connect to Hackmatrix backend at ${apiUrl}. Ensure the FastAPI service is running.`
+        `Scan failed: ${errMsg} (Endpoint: ${apiUrl}/scan). Ensure the FastAPI service is running.`
       );
     } finally {
       setIsLoading(false);

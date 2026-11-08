@@ -176,13 +176,19 @@ class SemanticRouter:
         """
         start_time = time.perf_counter()
 
-        try:
-            score, matched_proto = self.compute_similarity(text)
-        except Exception as err:
-            logger.warning("Failed computing semantic similarity (%s). Defaulting to heuristic fallback.", err)
-            # Lightweight heuristic fallback if sentence-transformers is not yet installed or fails
+        # In cloud / serverless environments (e.g. Render free tier), default to fast
+        # zero-latency heuristic routing to prevent 60s model download delays and 512MB RAM exhaustion.
+        enable_heavy_embedder = os.getenv("ENABLE_NEURAL_EMBEDDINGS", "false").lower() in ("true", "1")
+        if not enable_heavy_embedder:
             score = self._heuristic_complexity_score(text)
-            matched_proto = "Heuristic fallback evaluation"
+            matched_proto = "Heuristic complexity evaluation"
+        else:
+            try:
+                score, matched_proto = self.compute_similarity(text)
+            except Exception as err:
+                logger.warning("Failed computing semantic similarity (%s). Defaulting to heuristic fallback.", err)
+                score = self._heuristic_complexity_score(text)
+                matched_proto = "Heuristic fallback evaluation"
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         is_complex = score >= self.threshold

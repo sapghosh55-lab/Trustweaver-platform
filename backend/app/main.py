@@ -1,4 +1,5 @@
 """TrustWeaver Platform API entry point."""
+import re
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
@@ -9,6 +10,26 @@ app = FastAPI(
     description="Backend API for Hackmatrix / TrustWeaver Security & Digital Trust Platform",
     version="0.1.0",
 )
+
+
+class NormalizeSlashesMiddleware:
+    """Normalize redundant consecutive slashes in request paths (e.g. //scan -> /scan)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            path = scope.get("path", "")
+            if "//" in path:
+                scope["path"] = re.sub(r"/+", "/", path)
+            raw_path = scope.get("raw_path", b"")
+            if b"//" in raw_path:
+                scope["raw_path"] = re.sub(rb"/+", b"/", raw_path)
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(NormalizeSlashesMiddleware)
 
 # Configure CORS middleware to allow frontend connections
 app.add_middleware(

@@ -4,7 +4,8 @@
  * falling back to local development server if not set.
  */
 
-export const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const apiUrl = rawApiUrl.replace(/\/+$/, '');
 
 export const API_BASE_URL = apiUrl;
 
