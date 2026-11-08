@@ -25,6 +25,26 @@ app.include_router(routes, prefix="/api")
 app.include_router(api_router, prefix="/api")
 
 
+@app.get("/", tags=["Root"])
+@app.head("/", include_in_schema=False)
+async def root():
+    """Root status endpoint to verify backend service health and available routes."""
+    return {
+        "status": "online",
+        "service": "TrustWeaver Platform API",
+        "version": "0.1.0",
+        "health": "/health",
+        "docs": "/docs",
+        "endpoints": {
+            "scan": "POST /scan",
+            "recent_scans": "GET /scans/recent",
+            "health": "GET /health",
+            "docs": "GET /docs",
+        },
+    }
+
+
 @app.get("/health", tags=["Health"])
+@app.head("/health", include_in_schema=False)
 async def health_check():
     return {"status": "ok", "service": "hackmatrix-backend"}

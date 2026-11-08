@@ -34,6 +34,7 @@ class ScanRequest(BaseModel):
 
 
 @routes.post("/scan", response_model=Dict[str, Any], summary="Comprehensive Concurrent Security Scan")
+@routes.post("/scan/", response_model=Dict[str, Any], include_in_schema=False)
 async def scan_endpoint(req: ScanRequest) -> Dict[str, Any]:
     """Orchestrate phishing, SSL/TLS certificate, and vulnerability scans concurrently,
 
@@ -94,6 +95,7 @@ async def scan_endpoint(req: ScanRequest) -> Dict[str, Any]:
 
 
 @routes.get("/scans/recent", summary="Retrieve Recent Audit Histories")
+@routes.get("/scans/recent/", include_in_schema=False)
 async def get_recent_scans(limit: int = 15) -> List[Dict[str, Any]]:
     """Fetch the latest website audits and their Digital Trust Scores."""
     return db.get_recent_scans(limit=limit)
